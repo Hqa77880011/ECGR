@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecgr"
+version = "0.1.0"
+description = "ECGR implementation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26,<3", "scipy>=1.11,<2", "matplotlib>=3.8,<4", "torch>=2.4,<3", "scikit-image>=0.22,<1"]
+
+[project.scripts]
+ecgr-report = "ecgr.common:report"
+ecgr = "ecgr.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
