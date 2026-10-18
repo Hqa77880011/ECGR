@@ -9,5 +9,6 @@
   "busbar_conductance": 10.0,
   "maximum_explanations": 20,
   "occlusion": 0.0,
-  "device": "cpu"
+  "device": "cpu",
+  "input_source": "rendered_el_dense_sheet_circuit"
 }

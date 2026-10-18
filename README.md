@@ -49,18 +49,19 @@ Edge criticality removes a crack-attenuated edge and recomputes the same risk. E
 
 ## Registered compact reproduction setting
 
-Width-16 three-map structure estimator trained for 30 epochs, followed by the unchanged grounded conductance network. Reviewed-mask and learned-map evaluations use identical module-disjoint targets.
+EL textures, annotated collection geometry and cracks are rendered for independent modules. Separate full-sheet resistor circuits with hidden grain disorder produce Thevenin I-V curves and synthetic power/resistance endpoints. This truth solver does not call the visible-network ECGR estimator. These endpoints are generated circuit quantities.
 
-Run from the repository root after installation. The following commands use the registered setting; they are provided for execution and have not been run as part of the source review.
+Generate the declared input process, preprocess it, then use the existing method entry points:
 
 ```bash
-ecgr prepare --config configs/reproduce.json --input data/manifest.json --data data/reproduce
+python -m ecgr.synthetic --output data/generated --groups 36 --seed 17
+ecgr prepare --config configs/reproduce.json --input data/generated/manifest.json --data data/reproduce
 ecgr train --config configs/reproduce.json --data data/reproduce --output runs/reproduce_structure
 ecgr evaluate --config configs/reproduce.json --data data/reproduce --checkpoint runs/reproduce_structure/structure.pt --output runs/reproduce
 ecgr evaluate --config configs/reproduce.json --data data/reproduce --reviewed --output runs/reproduce_reviewed
 ```
 
-Required external inputs: module-disjoint EL/structure annotations and independently measured IV degradation targets. The formal input fields are specified above; preparation/training interfaces consume those fields directly. No particular paper dataset or pretrained task model is assumed beyond these declared inputs.
+`source.json` records the data-generating assumptions and seed. The configuration records `input_source`. All inputs for this selected setting are generated locally using installed package dependencies.
 
 ## Multiple seeds
 
