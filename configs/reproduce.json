@@ -1,0 +1,13 @@
+{
+  "seed": 17,
+  "epochs": 30,
+  "lr": 0.001,
+  "width": 16,
+  "kappa": 8.0,
+  "grid_threshold": 0.5,
+  "crack_threshold": 0.5,
+  "busbar_conductance": 10.0,
+  "maximum_explanations": 20,
+  "occlusion": 0.0,
+  "device": "cpu"
+}

@@ -47,6 +47,21 @@ Edge criticality removes a crack-attenuated edge and recomputes the same risk. E
 
 `structure.csv` contains per-structure Dice/IoU/mIoU/precision/recall/clDice/Conn-F1. `samples.csv` stores every functional and independent endpoint; `explanations.json` stores critical edges. `metrics.json` reports Spearman correlation with delta-Pmpp and delta-Rs overall and by subset, plus the contributing count. Undefined correlations are null. Records, rather than graph-derived proxies, define electrical outcomes. Aggregate repeated cell/crop observations to module endpoints before export to avoid treating correlated crops as independent electrical samples. Comparison CSV/JSON and PNG/SVG plots use computed measurements.
 
+## Registered compact reproduction setting
+
+Width-16 three-map structure estimator trained for 30 epochs, followed by the unchanged grounded conductance network. Reviewed-mask and learned-map evaluations use identical module-disjoint targets.
+
+Run from the repository root after installation. The following commands use the registered setting; they are provided for execution and have not been run as part of the source review.
+
+```bash
+ecgr prepare --config configs/reproduce.json --input data/manifest.json --data data/reproduce
+ecgr train --config configs/reproduce.json --data data/reproduce --output runs/reproduce_structure
+ecgr evaluate --config configs/reproduce.json --data data/reproduce --checkpoint runs/reproduce_structure/structure.pt --output runs/reproduce
+ecgr evaluate --config configs/reproduce.json --data data/reproduce --reviewed --output runs/reproduce_reviewed
+```
+
+Required external inputs: module-disjoint EL/structure annotations and independently measured IV degradation targets. The formal input fields are specified above; preparation/training interfaces consume those fields directly. No particular paper dataset or pretrained task model is assumed beyond these declared inputs.
+
 ## Multiple seeds
 
 Run matched configurations with different seeds in separate directories, then aggregate the generated metric files:
