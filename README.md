@@ -4,73 +4,55 @@ Implementation of electrical-connectivity-constrained PV crack risk from electro
 
 ## Installation
 
-
-Use Python 3.11 or newer. Create and activate a virtual environment, then install:
+Use Python `>=3.11`. Run commands from the repository root. Create the environment, activate it with `source .venv/bin/activate` (Linux/macOS) or `.venv\Scripts\Activate.ps1` (PowerShell), then install the package.
 
 ```bash
 python -m venv .venv
 ```
 
-Activate with `source .venv/bin/activate` on Linux/macOS or `.venv\Scripts\Activate.ps1` in PowerShell, then install:
-
 ```bash
 python -m pip install -e .
-``` For GPU execution, install matching PyTorch and torchvision builds using the [PyTorch selector](https://pytorch.org/get-started/locally/).
-
-
-## EL and independent electrical records
-
-Use [ELPV](https://github.com/zae-bayern/elpv-dataset) for EL classification/structure context and paired EL–I–V measurements for electrical validation, such as [Sandia PV-IV-EL](https://data.openei.org/submissions/8378). ELPV class labels alone are not independent electrical degradation targets. Export NPZ files with normalized grayscale `image`, integer generating-cell `regions` (0 background), structure masks `crack,grid,busbar` when annotated, and `delta_pmpp`/`delta_rs` when independently measured. Use consistently oriented endpoints: positive values denote degradation. Automatic probability maps can be supplied as `pred_crack,pred_grid,pred_busbar`.
-
-A JSON manifest lists `{id,path,module,split,subset}`. Keep repeated inspections, cells and crops from one physical module in one split. `subset` can encode crack orientation or non-crack confounds and is used only for reporting.
-
-```bash
-ecgr prepare --input data/manifest.json --data data/el
-ecgr train --data data/el --output runs/structure
-ecgr evaluate --data data/el --checkpoint runs/structure/structure.pt --output runs/full
-ecgr evaluate --data data/el --reviewed --output runs/reviewed
-ecgr compare --inputs runs/full runs/reviewed --output outputs/comparison
-ecgr plot --output outputs/comparison
 ```
 
-Omit the structure checkpoint to use precomputed automatic maps. `train` is a compact three-output convolutional structure estimator with BCE+Dice, interchangeable with a stronger segmentation model. Reviewed-mask evaluation keeps the same electrical functional and endpoints.
+## Data generation and preparation
 
-## Graph risk and explanations
-
-Skeletonized visible fingers and busbars form an eight-neighbor conductance graph. Nominal edge conductance depends on type and pixel length; crack probability attenuates it by `exp(-kappa*mean_probability)`. Each generating region is represented at its centroid's nearest network node, weighted by region area. Grounded sparse Laplacian solves yield effective conductance to visible busbars. Risk compares actual/crack-free conductance on the **same** visible graph and clips each collection ratio at one. Regions with no crack-free terminal path are excluded and their area fraction is reported as lost observability. Busbar source nodes have zero collection loss.
-
-Edge criticality removes a crack-attenuated edge and recomputes the same risk. Explanations contain pixel endpoints and risk increments. `maximum_explanations` limits the candidate edges to the largest nominal conductance losses. Baselines hold probability masks fixed: crack area/length, a global orientation proxy, per-region crack-convex-hull inactive-area proxy and thresholded binary reachability. Geometry proxies are explicit controls, not independent electrical ground truth.
-
-## Metrics and outputs
-
-`configs/default.json` controls segmentation training, thresholds, kappa, busbar conductance, explanation count, seed, device and grid occlusion. Occlusion independently removes visible finger pixels before graph construction while retaining busbars; use separate configs/output paths for the stress curve.
-
-`structure.csv` contains per-structure Dice/IoU/mIoU/precision/recall/clDice/Conn-F1. `samples.csv` stores every functional and independent endpoint; `explanations.json` stores critical edges. `metrics.json` reports Spearman correlation with delta-Pmpp and delta-Rs overall and by subset, plus the contributing count. Undefined correlations are null. Records, rather than graph-derived proxies, define electrical outcomes. Aggregate repeated cell/crop observations to module endpoints before export to avoid treating correlated crops as independent electrical samples. Comparison CSV/JSON and PNG/SVG plots use computed measurements.
-
-## Registered compact reproduction setting
-
-EL textures, annotated collection geometry and cracks are rendered for independent modules. Separate full-sheet resistor circuits with hidden grain disorder produce Thevenin I-V curves and synthetic power/resistance endpoints. This truth solver does not call the visible-network ECGR estimator. These endpoints are generated circuit quantities.
-
-Generate the declared input process, preprocess it, then use the existing method entry points:
+The generator renders EL textures and crack/collection geometry for independent modules. A separate full-sheet resistor circuit produces the synthetic I–V endpoints; these are generated electrical quantities. `source.json` records the process and seed.
 
 ```bash
 python -m ecgr.synthetic --output data/generated --groups 36 --seed 17
 ecgr prepare --config configs/reproduce.json --input data/generated/manifest.json --data data/reproduce
+```
+
+For external data: Use [ELPV](https://github.com/zae-bayern/elpv-dataset) for EL classification/structure context and paired EL–I–V measurements for electrical validation, such as [Sandia PV-IV-EL](https://data.openei.org/submissions/8378). ELPV class labels alone are not independent electrical degradation targets. Export NPZ files with normalized grayscale `image`, integer generating-cell `regions` (0 background), structure masks `crack,grid,busbar` when annotated, and `delta_pmpp`/`delta_rs` when independently measured. Use consistently oriented endpoints: positive values denote degradation. Automatic probability maps can be supplied as `pred_crack,pred_grid,pred_busbar`.
+
+## Training and inference
+
+`configs/reproduce.json` fixes seed `17`. Use the same config and prepared inputs throughout; change `seed` there for another run and keep its output directories separate.
+
+```bash
 ecgr train --config configs/reproduce.json --data data/reproduce --output runs/reproduce_structure
+```
+
+## Evaluation
+
+```bash
 ecgr evaluate --config configs/reproduce.json --data data/reproduce --checkpoint runs/reproduce_structure/structure.pt --output runs/reproduce
 ecgr evaluate --config configs/reproduce.json --data data/reproduce --reviewed --output runs/reproduce_reviewed
 ```
 
-`source.json` records the data-generating assumptions and seed. The configuration records `input_source`. All inputs for this selected setting are generated locally using installed package dependencies.
+## Comparisons and ablations
 
-## Multiple seeds
-
-Run matched configurations with different seeds in separate directories, then aggregate the generated metric files:
+Evaluate automatic and reviewed structures separately, then pass their evaluated run directories to `compare --inputs`.
 
 ```bash
-ecgr-report --inputs runs/seed0/metrics.json runs/seed1/metrics.json --output outputs/seeds
+ecgr compare --inputs runs/reproduce runs/reproduce_reviewed --output outputs/comparison
+ecgr plot --output outputs/comparison
 ```
 
-Use actual metric paths from your runs, including method subdirectories where applicable. Keep dataset, split and experimental condition fixed within a report. Summary CSV/JSON gives per-method arithmetic means and sample standard deviations; a single run has no standard-deviation estimate.
+## Outputs
 
-Conn-F1 compares connectedness of up to 64 deterministic ground-truth skeleton anchors across all pairs. Predicted anchors are matched within two pixels; missed anchors count as disconnected. mIoU averages foreground and background IoU. These definitions fix the otherwise unspecified topology-metric sampling convention.
+The selected commands write their generated inputs under `data/generated/`, prepared data under `data/reproduce/`, and checkpoints/results in the explicit output directories. Corresponding steps produce `history.csv`, `structure.pt`, `samples.csv`, `structure.csv`, `explanations.json`, `metrics.json`, `source.json`. Comparisons write CSV/JSON and plots under their output directory.
+
+## Verification
+
+Source checks used Python 3.13.5. Installed dependency metadata: numpy 2.1.3, torch 2.7.1+cu118, scipy 1.15.3, matplotlib 3.10.0. Python AST, configuration files, CLI parser definitions and source input/output paths were checked without invoking command handlers. Training, full evaluation and CI were not run for this review.
